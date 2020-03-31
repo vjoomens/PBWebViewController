@@ -7,15 +7,20 @@
 //
 
 #import <UIKit/UIKit.h>
+#import <WebKit/WebKit.h>
 
 NS_ASSUME_NONNULL_BEGIN
+
+@interface WKWebView(SynchronousEvaluateJavaScript)
+- (NSString *)stringByEvaluatingJavaScriptFromString:(NSString *)script;
+@end
 
 /**
  * The `PBWebViewController` class is a view controller that displays the contents of a URL
  * along tith a navigation toolbar with buttons to stop/refresh the loading of the page
  * as well as buttons to go back, forward and to share the URL using a `UIActivityViewController`.
  */
-@interface PBWebViewController : UIViewController <UIWebViewDelegate>
+@interface PBWebViewController : UIViewController <WKNavigationDelegate>
 
 /**
  * The URL that will be loaded by the web view controller.

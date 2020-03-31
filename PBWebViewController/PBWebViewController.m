@@ -7,10 +7,11 @@
 //
 
 #import "PBWebViewController.h"
+#import <WebKit/WebKit.h>
 
 @interface PBWebViewController ()
 
-@property (strong, nonatomic) UIWebView *webView;
+@property (strong, nonatomic) WKWebView *webView;
 
 @property (strong, nonatomic) UIBarButtonItem *stopLoadingButton;
 @property (strong, nonatomic) UIBarButtonItem *reloadButton;
@@ -19,6 +20,33 @@
 
 @property (assign, nonatomic) BOOL toolbarPreviouslyHidden;
 
+@end
+
+@implementation WKWebView(SynchronousEvaluateJavaScript)
+
+- (NSString *)stringByEvaluatingJavaScriptFromString:(NSString *)script
+{
+    __block NSString *resultString = nil;
+    __block BOOL finished = NO;
+
+    [self evaluateJavaScript:script completionHandler:^(id result, NSError *error) {
+        if (error == nil) {
+            if (result != nil) {
+                resultString = [NSString stringWithFormat:@"%@", result];
+            }
+        } else {
+            NSLog(@"evaluateJavaScript error : %@", error.localizedDescription);
+        }
+        finished = YES;
+    }];
+
+    while (!finished)
+    {
+        [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:[NSDate distantFuture]];
+    }
+
+    return resultString;
+}
 @end
 
 @implementation PBWebViewController
@@ -68,8 +96,8 @@
 
 - (void)loadView
 {
-    self.webView = [[UIWebView alloc] init];
-    self.webView.scalesPageToFit = YES;
+    self.webView = [[WKWebView alloc] init];
+//    self.webView.scalesPageToFit = YES;
     self.view = self.webView;
 }
 
@@ -82,7 +110,7 @@
 - (void)viewWillAppear:(BOOL)animated
 {
     [super viewWillAppear:animated];
-    self.webView.delegate = self;
+    self.webView.navigationDelegate = self;
     if (self.URL) {
         [self load];
     }
@@ -92,7 +120,7 @@
 {
     [super viewWillDisappear:animated];
     [self.webView stopLoading];
-    self.webView.delegate = nil;
+    self.webView.navigationDelegate = nil;
     [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:NO];
     
     if (self.toolbarPreviouslyHidden && self.showsNavigationToolbar) {
@@ -224,20 +252,20 @@
 
 #pragma mark - Web view delegate
 
-- (void)webViewDidStartLoad:(UIWebView *)webView
+- (void)webView:(WKWebView *)webView didStartProvisionalNavigation:(WKNavigation *)navigation
 {
     [[UIApplication sharedApplication] setNetworkActivityIndicatorVisible:YES];
     [self toggleState];
 }
 
-- (void)webViewDidFinishLoad:(UIWebView *)webView
+- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation
 {
     [self finishLoad];
     self.title = [webView stringByEvaluatingJavaScriptFromString:@"document.title"];
-    self.URL = self.webView.request.URL;
+    self.URL = self.webView.URL;
 }
 
-- (void)webView:(UIWebView *)webView didFailLoadWithError:(NSError *)error
+- (void)webView:(WKWebView *)webView didFailNavigation:(WKNavigation *)navigation withError:(NSError *)error
 {
     [self finishLoad];
 }
